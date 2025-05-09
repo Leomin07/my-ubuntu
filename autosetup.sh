@@ -301,8 +301,9 @@ configure_warp
 install_docker
 install_nerdfont
 install_lazydocker
-install_ibus_bamboo
 clean_apt
+install_ibus_bamboo
+
 
 log_success "🎉 Thiết lập môi trường hoàn tất!"
 
