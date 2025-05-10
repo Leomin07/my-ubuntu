@@ -18,3 +18,9 @@ while read -r uuid; do
     gnome-extensions enable "$uuid"
 done < extensions.txt
 ```
+
+### Virtual Machine Manager
+
+```
+sudo apt install ssh-askpass virt-manager
+```

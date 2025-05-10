@@ -1,11 +1,11 @@
 #!/bin/bash
-#   _          ______ ____  __  __ _____ _  _
-#  | |         | ____/ __ \ \/ / | ___| \ | |
-#  | |         | |__ | |  | \  /  | |_  |  \| |
-#  | |         |  __|| |  | |\/|  |  _| | . ` |
-#  | |____     | |___| |__| |  |  | |   | |\  |
-#  |______|____|____/|_|  |_|_____|_| \_|
 
+#  _      ______ ____  __  __ _____ _   _
+# | |    |  ____/ __ \|  \/  |_   _| \ | |
+# | |    | |__ | |  | | \  / | | | |  \| |
+# | |    |  __|| |  | | |\/| | | | | . ` |
+# | |____| |___| |__| | |  | |_| |_| |\  |
+# |______|______\____/|_|  |_|_____|_| \_|
 set -e
 
 # --- Configuration ---
@@ -15,20 +15,24 @@ SSH_KEY_FILE="$HOME/.ssh/id_ed25519"
 FISH_SHELL="/usr/bin/fish"
 
 FISH_PLUGINS=(
-    "gazorby/fish-abbreviation-tips"
-    "jhillyerd/plugin-git"
-    "jethrokuan/z"
-    "jorgebucaran/autopair.fish"
+  "gazorby/fish-abbreviation-tips"
+  "jhillyerd/plugin-git"
+  "jethrokuan/z"
+  "jorgebucaran/autopair.fish"
 )
 
 APT_PACKAGES=(
   "python3"
+  "python3-pip"
+  "python3-tk"
   "nodejs"
   "yarn"
+  "npm"
   "ffmpeg"
   "vim"
   "neovim"
   "kitty"
+  "alacritty"
   "mpv"
   "curl"
   "stow"
@@ -48,9 +52,9 @@ SNAP_PACKAGES=(
 )
 
 # --- Helper Functions ---
-log_info()     { echo "[$(date '+%H:%M:%S')] >> $1"; }
-log_success()  { echo "✅ $1"; }
-log_warning()  { echo "⚠️ $1"; }
+log_info() { echo "[$(date '+%H:%M:%S')] >> $1"; }
+log_success() { echo "✅ $1"; }
+log_warning() { echo "⚠️ $1"; }
 
 is_installed() {
   command -v "$1" &>/dev/null || dpkg -s "$1" &>/dev/null || snap list "$1" &>/dev/null
@@ -61,26 +65,26 @@ install_software() {
   local method="${2:-apt}"
 
   case "$method" in
-    "apt")
-      if ! is_installed "$name"; then
-        sudo apt install -y "$name"
-        [ $? -eq 0 ] && log_success "Đã cài đặt '$name' thành công." || log_warning "Cài đặt '$name' thất bại."
-      else
-        log_info "'$name' đã được cài đặt, bỏ qua."
-      fi
-      ;;
-    "snap")
-      local pkg_name=$(echo "$name" | awk '{print $1}')
-      if ! snap list "$pkg_name" &>/dev/null; then
-        sudo snap install $name
-        [ $? -eq 0 ] && log_success "Đã cài đặt '$name' snap thành công." || log_warning "Cài đặt '$name' snap thất bại."
-      else
-        log_info "'$pkg_name' snap đã được cài đặt, bỏ qua."
-      fi
-      ;;
-    *)
-      log_warning "Phương thức cài đặt '$method' không được hỗ trợ cho '$name'."
-      ;;
+  "apt")
+    if ! is_installed "$name"; then
+      sudo apt install -y "$name"
+      [ $? -eq 0 ] && log_success "Đã cài đặt '$name' thành công." || log_warning "Cài đặt '$name' thất bại."
+    else
+      log_info "'$name' đã được cài đặt, bỏ qua."
+    fi
+    ;;
+  "snap")
+    local pkg_name=$(echo "$name" | awk '{print $1}')
+    if ! snap list "$pkg_name" &>/dev/null; then
+      sudo snap install $name
+      [ $? -eq 0 ] && log_success "Đã cài đặt '$name' snap thành công." || log_warning "Cài đặt '$name' snap thất bại."
+    else
+      log_info "'$pkg_name' snap đã được cài đặt, bỏ qua."
+    fi
+    ;;
+  *)
+    log_warning "Phương thức cài đặt '$method' không được hỗ trợ cho '$name'."
+    ;;
   esac
 }
 
@@ -121,7 +125,6 @@ configure_warp() {
   warp-cli registration new
   warp-cli connect
 }
-
 
 clean_apt() {
   log_info "Dọn dẹp APT..."
@@ -176,45 +179,24 @@ install_zsh_plugins() {
   log_info "⚠️ Nhớ thêm 'zsh-autosuggestions zsh-syntax-highlighting zsh-completions' vào plugins trong ~/.zshrc"
 }
 
-
-install_ibus_bamboo() {
-  if dpkg -s ibus-bamboo &>/dev/null; then
-    log_info "ibus-bamboo đã được cài đặt, bỏ qua."
-    return
-  fi
-
-  log_info "Cài đặt ibus-bamboo..."
-  sudo add-apt-repository ppa:bamboo-engine/ibus-bamboo
-  sudo apt-get update
-  sudo apt-get install -y ibus ibus-bamboo --install-recommends
-  ibus restart
-
-  # Đặt ibus-bamboo làm bộ gõ mặc định
-  env DCONF_PROFILE=ibus dconf write /desktop/ibus/general/preload-engines "['BambooUs', 'Bamboo']"
-  gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'us'), ('ibus', 'Bamboo')]"
-
-  log_success "Đã cài đặt và cấu hình ibus-bamboo."
-}
-
-
 install_nerdfont() {
   # Kiểm tra xem font JetBrainsMono đã có trong thư mục fonts chưa
   if fc-list | grep -i "JetBrainsMono" &>/dev/null; then
     log_info "Font JetBrainsMono đã được cài đặt, bỏ qua."
   else
     log_info "Đang tải và cài đặt font JetBrainsMono..."
-    wget -P ~/.local/share/fonts https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip \
-    && cd ~/.local/share/fonts \
-    && unzip JetBrainsMono.zip \
-    && rm JetBrainsMono.zip \
-    && fc-cache -fv
+    wget -P ~/.local/share/fonts https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip &&
+      cd ~/.local/share/fonts &&
+      unzip JetBrainsMono.zip &&
+      rm JetBrainsMono.zip &&
+      fc-cache -fv
 
     log_success "Đã cài đặt font JetBrainsMono thành công."
   fi
 }
 
 install_docker() {
-  if command -v docker &> /dev/null; then
+  if command -v docker &>/dev/null; then
     echo "✅ Docker is already installed. Skipping installation."
     return
   fi
@@ -235,8 +217,8 @@ install_docker() {
   # Thêm Docker repository vào sources list
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
   https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" |
+    sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
 
   # Cập nhật và cài đặt Docker
   sudo apt-get update
@@ -245,39 +227,60 @@ install_docker() {
   echo "✅ Docker installation completed."
 }
 
-
 set_default_shell() {
-    local current_shell=$(getent passwd "$USER" | cut -d: -f7)
-    if [ "$current_shell" != "$FISH_SHELL" ]; then
-        log_info "Changing default shell to fish for user $USER..."
-        sudo chsh -s "$FISH_SHELL" "$USER"
-    else
-        log_info "Default shell is already fish."
-    fi
+  local current_shell=$(getent passwd "$USER" | cut -d: -f7)
+  if [ "$current_shell" != "$FISH_SHELL" ]; then
+    log_info "Changing default shell to fish for user $USER..."
+    sudo chsh -s "$FISH_SHELL" "$USER"
+  else
+    log_info "Default shell is already fish."
+  fi
 }
 
 install_fisher() {
-    if ! fish -c "type -q fisher"; then
-        log_info "Installing fisher..."
-        fish -c 'curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher'
-    else
-        log_info "Fisher is already installed, skipping."
-    fi
+  if ! fish -c "type -q fisher"; then
+    log_info "Installing fisher..."
+    fish -c 'curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher'
+  else
+    log_info "Fisher is already installed, skipping."
+  fi
 }
 
 install_fish_plugins() {
-    for plugin in "${FISH_PLUGINS[@]}"; do
-        if ! fish -c "fisher list | grep -q '$plugin'"; then
-            log_info "Installing Fish plugin: $plugin"
-            fish -c "fisher install $plugin"
-        else
-            log_info "Fish plugin '$plugin' is already installed."
-        fi
-    done
+  for plugin in "${FISH_PLUGINS[@]}"; do
+    if ! fish -c "fisher list | grep -q '$plugin'"; then
+      log_info "Installing Fish plugin: $plugin"
+      fish -c "fisher install $plugin"
+    else
+      log_info "Fish plugin '$plugin' is already installed."
+    fi
+  done
 }
 
-install_lazydocker(){
-    go install github.com/jesseduffield/lazydocker@latest
+install_lazydocker() {
+  go install github.com/jesseduffield/lazydocker@latest
+
+  echo "alias lzd='sudo docker run --rm -it -v /var/run/docker.sock:/var/run/docker.sock -v ~/.config/jesseduffield/lazydocker lazyteam/lazydocker'" >>~/.config/fish/config.fish
+
+}
+
+install_ibus_bamboo() {
+  if dpkg -s ibus-bamboo &>/dev/null; then
+    log_info "ibus-bamboo đã được cài đặt, bỏ qua."
+    return
+  fi
+
+  log_info "Cài đặt ibus-bamboo..."
+  sudo add-apt-repository ppa:bamboo-engine/ibus-bamboo
+  sudo apt-get update
+  sudo apt-get install -y ibus ibus-bamboo --install-recommends
+  ibus restart
+
+  # Đặt ibus-bamboo làm bộ gõ mặc định
+  env DCONF_PROFILE=ibus dconf write /desktop/ibus/general/preload-engines "['BambooUs', 'Bamboo']"
+  gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'us'), ('ibus', 'Bamboo')]"
+
+  log_success "Đã cài đặt và cấu hình ibus-bamboo."
 }
 
 # --- Main ---
@@ -304,6 +307,6 @@ install_lazydocker
 clean_apt
 install_ibus_bamboo
 
+dconf load /org/gnome/shell/extensions/ <~/my-ubuntu/dump_extensions.txt
 
 log_success "🎉 Thiết lập môi trường hoàn tất!"
-
