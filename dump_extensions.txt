@@ -79,4 +79,5 @@ cpu-display='numeric'
 fs-display='numeric'
 mem-display='numeric'
 mount-to-monitor='/'
+refresh-rate='fast'
 show-disk=false
